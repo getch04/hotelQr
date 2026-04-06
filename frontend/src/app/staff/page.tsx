@@ -15,18 +15,25 @@ import { api, Order, OrderStatus } from "@/lib/api";
 
 const STATUS_CONFIG: Record<
   OrderStatus,
-  { label: string; color: string; bg: string; icon: typeof Clock }
+  { label: string; color: string; bg: string; dot: string; icon: typeof Clock }
 > = {
-  PENDING: { label: "Pending", color: "text-amber-700", bg: "bg-amber-50 border-amber-200", icon: Clock },
-  PREPARING: { label: "Preparing", color: "text-blue-700", bg: "bg-blue-50 border-blue-200", icon: ChefHat },
-  DELIVERED: { label: "Delivered", color: "text-green-700", bg: "bg-green-50 border-green-200", icon: CheckCircle2 },
-  CANCELLED: { label: "Cancelled", color: "text-red-700", bg: "bg-red-50 border-red-200", icon: XCircle },
+  PENDING:   { label: "Pending",   color: "#92400e", bg: "#fef9ec", dot: "#f59e0b", icon: Clock        },
+  PREPARING: { label: "Preparing", color: "#1e40af", bg: "#eff6ff", dot: "#3b82f6", icon: ChefHat      },
+  DELIVERED: { label: "Delivered", color: "#166534", bg: "#f0fdf4", dot: "#22c55e", icon: CheckCircle2 },
+  CANCELLED: { label: "Cancelled", color: "#991b1b", bg: "#fef2f2", dot: "#ef4444", icon: XCircle      },
 };
 
 const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
   PENDING: "PREPARING",
   PREPARING: "DELIVERED",
 };
+
+function timeAgo(dateStr: string): string {
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (diff < 60)  return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  return `${Math.floor(diff / 3600)}h ago`;
+}
 
 export default function StaffDashboard() {
   const router = useRouter();
@@ -42,10 +49,8 @@ export default function StaffDashboard() {
       router.push("/staff/login");
       return;
     }
-
     const parsed = JSON.parse(userData);
     setUser(parsed);
-
     try {
       const data = await api.getOrdersByHotel(parsed.hotel.id, token);
       setOrders(data);
@@ -60,51 +65,54 @@ export default function StaffDashboard() {
     fetchOrders();
   }, [fetchOrders]);
 
-
   const handleStatusUpdate = async (orderId: string, status: OrderStatus) => {
     const token = localStorage.getItem("token");
     if (!token) return;
     try {
       const updated = await api.updateOrderStatus(orderId, status, token);
       setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
-      toast.success(`Order marked as ${STATUS_CONFIG[status].label}`);
+      toast.success(`Marked as ${STATUS_CONFIG[status].label}`);
     } catch {
       toast.error("Failed to update order");
     }
   };
 
-  const filteredOrders =
-    filter === "ALL" ? orders : orders.filter((o) => o.status === filter);
-
-  const pendingCount = orders.filter((o) => o.status === "PENDING").length;
+  const filteredOrders = filter === "ALL" ? orders : orders.filter((o) => o.status === filter);
+  const pendingCount   = orders.filter((o) => o.status === "PENDING").length;
   const preparingCount = orders.filter((o) => o.status === "PREPARING").length;
 
+  /* ── Loading ─────────────────────────────────────────── */
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <RefreshCw className="w-6 h-6 animate-spin text-brand" />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--surface)" }}>
+        <RefreshCw className="w-5 h-5 animate-spin" style={{ color: "var(--brand)" }} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ background: "var(--surface)" }}>
+
       {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-30">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+      <header
+        className="sticky top-0 z-30"
+        style={{ background: "var(--card)", borderBottom: "1px solid var(--border)" }}
+      >
+        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold">{user?.hotel.name}</h1>
-            <p className="text-xs text-[var(--text-secondary)]">
-              Order Dashboard &middot; {user?.name}
+            <h1 className="text-base font-bold leading-tight">{user?.hotel.name}</h1>
+            <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
+              {user?.name} · Order Dashboard
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <button
               onClick={fetchOrders}
-              className="p-2 rounded-xl hover:bg-gray-100 transition"
+              className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors"
+              style={{ background: "var(--surface-warm)" }}
               title="Refresh"
             >
-              <RefreshCw className="w-5 h-5 text-[var(--text-secondary)]" />
+              <RefreshCw className="w-4 h-4" style={{ color: "var(--text-secondary)" }} />
             </button>
             <button
               onClick={() => {
@@ -112,148 +120,236 @@ export default function StaffDashboard() {
                 localStorage.removeItem("user");
                 router.push("/staff/login");
               }}
-              className="p-2 rounded-xl hover:bg-gray-100 transition"
+              className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors"
+              style={{ background: "var(--surface-warm)" }}
               title="Logout"
             >
-              <LogOut className="w-5 h-5 text-[var(--text-secondary)]" />
+              <LogOut className="w-4 h-4" style={{ color: "var(--text-secondary)" }} />
             </button>
           </div>
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-4 py-4">
-        {/* Stats bar */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-3">
-            <Clock className="w-8 h-8 text-amber-600" />
-            <div>
-              <p className="text-2xl font-bold text-amber-800">{pendingCount}</p>
-              <p className="text-xs text-amber-600">Pending</p>
-            </div>
-          </div>
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center gap-3">
-            <ChefHat className="w-8 h-8 text-blue-600" />
-            <div>
-              <p className="text-2xl font-bold text-blue-800">{preparingCount}</p>
-              <p className="text-xs text-blue-600">Preparing</p>
-            </div>
-          </div>
+      <div className="max-w-3xl mx-auto px-4 py-5 space-y-4">
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-3">
+          <StatCard
+            icon={<Clock className="w-5 h-5" />}
+            count={pendingCount}
+            label="Pending"
+            iconBg="#fef3c7"
+            iconColor="#d97706"
+            countColor="#92400e"
+          />
+          <StatCard
+            icon={<ChefHat className="w-5 h-5" />}
+            count={preparingCount}
+            label="Preparing"
+            iconBg="#dbeafe"
+            iconColor="#3b82f6"
+            countColor="#1e40af"
+          />
         </div>
 
-        {/* Filters */}
-        <div className="flex gap-2 overflow-x-auto pb-3">
-          {(["ALL", "PENDING", "PREPARING", "DELIVERED", "CANCELLED"] as const).map(
-            (s) => (
+        {/* Filter tabs */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+          {(["ALL", "PENDING", "PREPARING", "DELIVERED", "CANCELLED"] as const).map((s) => {
+            const active = filter === s;
+            const count  = s === "ALL" ? orders.length : orders.filter((o) => o.status === s).length;
+            return (
               <button
                 key={s}
                 onClick={() => setFilter(s)}
-                className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-                  filter === s
-                    ? "bg-brand text-white"
-                    : "bg-white border text-[var(--text-secondary)] hover:bg-gray-50"
-                }`}
+                className="shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all"
+                style={
+                  active
+                    ? {
+                        background: "linear-gradient(135deg, var(--brand) 0%, var(--brand-dark) 100%)",
+                        color: "#fff",
+                        boxShadow: "0 2px 8px rgba(201,147,90,0.35)"
+                      }
+                    : {
+                        background: "var(--card)",
+                        color: "var(--text-secondary)",
+                        border: "1px solid var(--border)"
+                      }
+                }
               >
-                {s === "ALL" ? "All Orders" : STATUS_CONFIG[s].label}
-                {s === "ALL" && ` (${orders.length})`}
+                {s !== "ALL" && (
+                  <span
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{ background: active ? "rgba(255,255,255,0.7)" : STATUS_CONFIG[s].dot }}
+                  />
+                )}
+                {s === "ALL" ? "All" : STATUS_CONFIG[s].label}
+                <span
+                  className="ml-0.5 text-[10px]"
+                  style={{ opacity: 0.7 }}
+                >
+                  {count}
+                </span>
               </button>
-            )
-          )}
-        </div>
-
-        {/* Orders list */}
-        <div className="space-y-3">
-          {filteredOrders.length === 0 && (
-            <div className="text-center py-16 text-[var(--text-secondary)]">
-              <Clock className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p>No orders yet</p>
-            </div>
-          )}
-          {filteredOrders.map((order) => {
-            const config = STATUS_CONFIG[order.status];
-            const StatusIcon = config.icon;
-            const nextStatus = NEXT_STATUS[order.status];
-            return (
-              <div
-                key={order.id}
-                className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${
-                  order.status === "PENDING" ? "ring-2 ring-amber-300" : ""
-                }`}
-              >
-                <div className="p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-lg">
-                          Room {order.room?.number}
-                        </span>
-                        <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border ${config.bg} ${config.color}`}
-                        >
-                          <StatusIcon className="w-3 h-3" />
-                          {config.label}
-                        </span>
-                      </div>
-                      <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-                        {new Date(order.createdAt).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}{" "}
-                        &middot; #{order.id.slice(0, 8)}
-                      </p>
-                    </div>
-                    <span className="text-lg font-bold">
-                      {order.total.toFixed(0)} Br
-                    </span>
-                  </div>
-
-                  <div className="space-y-1 mb-3">
-                    {order.items.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex justify-between text-sm"
-                      >
-                        <span>
-                          <span className="font-medium">{item.quantity}x</span>{" "}
-                          {item.menuItem.name}
-                        </span>
-                        <span className="text-[var(--text-secondary)]">
-                          {(item.price * item.quantity).toFixed(0)} Br
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {order.notes && (
-                    <p className="text-xs bg-amber-50 text-amber-800 px-3 py-2 rounded-lg mb-3">
-                      Note: {order.notes}
-                    </p>
-                  )}
-
-                  {nextStatus && (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleStatusUpdate(order.id, nextStatus)}
-                        className="flex-1 py-2.5 bg-brand text-white rounded-xl text-sm font-semibold hover:bg-brand-dark transition-colors"
-                      >
-                        Mark as {STATUS_CONFIG[nextStatus].label}
-                      </button>
-                      {order.status === "PENDING" && (
-                        <button
-                          onClick={() =>
-                            handleStatusUpdate(order.id, "CANCELLED")
-                          }
-                          className="py-2.5 px-4 bg-red-50 text-red-600 rounded-xl text-sm font-medium hover:bg-red-100 transition-colors"
-                        >
-                          Cancel
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
             );
           })}
         </div>
+
+        {/* Orders */}
+        {filteredOrders.length === 0 ? (
+          <div className="text-center py-20">
+            <div
+              className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
+              style={{ background: "var(--surface-warm)" }}
+            >
+              <Clock className="w-6 h-6" style={{ color: "var(--text-muted)" }} />
+            </div>
+            <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>No orders yet</p>
+            <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+              Orders will appear here when guests place them.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredOrders.map((order) => (
+              <OrderCard
+                key={order.id}
+                order={order}
+                onUpdate={handleStatusUpdate}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── Stat Card ────────────────────────────────────────────── */
+function StatCard({
+  icon, count, label, iconBg, iconColor, countColor
+}: {
+  icon: React.ReactNode;
+  count: number;
+  label: string;
+  iconBg: string;
+  iconColor: string;
+  countColor: string;
+}) {
+  return (
+    <div
+      className="rounded-2xl p-4 flex items-center gap-4"
+      style={{ background: "var(--card)", boxShadow: "var(--shadow-sm)", border: "1px solid var(--border)" }}
+    >
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+           style={{ background: iconBg, color: iconColor }}>
+        {icon}
+      </div>
+      <div>
+        <p className="text-2xl font-bold leading-none" style={{ color: countColor }}>{count}</p>
+        <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>{label}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ── Order Card ───────────────────────────────────────────── */
+function OrderCard({
+  order,
+  onUpdate,
+}: {
+  order: Order;
+  onUpdate: (id: string, status: OrderStatus) => void;
+}) {
+  const config     = STATUS_CONFIG[order.status];
+  const StatusIcon = config.icon;
+  const nextStatus = NEXT_STATUS[order.status];
+  const isPending  = order.status === "PENDING";
+
+  return (
+    <div
+      className="rounded-2xl overflow-hidden transition-all"
+      style={{
+        background: "var(--card)",
+        boxShadow: isPending ? "0 0 0 2px #fbbf24, var(--shadow-sm)" : "var(--shadow-sm)",
+        border: `1px solid var(--border)`
+      }}
+    >
+      <div className="p-4">
+        {/* Top row */}
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-lg font-bold">Room {order.room?.number}</span>
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+                style={{ background: config.bg, color: config.color }}
+              >
+                <StatusIcon className="w-3 h-3" />
+                {config.label}
+              </span>
+            </div>
+            <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+              {timeAgo(order.createdAt)} · #{order.id.slice(0, 8).toUpperCase()}
+            </p>
+          </div>
+          <span className="text-base font-bold" style={{ color: "var(--brand)" }}>
+            {order.total.toFixed(0)} Br
+          </span>
+        </div>
+
+        {/* Items */}
+        <div
+          className="rounded-xl p-3 mb-3 space-y-1.5"
+          style={{ background: "var(--surface-warm)" }}
+        >
+          {order.items.map((item) => (
+            <div key={item.id} className="flex justify-between text-sm">
+              <span>
+                <span className="font-semibold">{item.quantity}×</span>{" "}
+                <span style={{ color: "var(--text-secondary)" }}>{item.menuItem.name}</span>
+              </span>
+              <span className="font-medium" style={{ color: "var(--text-secondary)" }}>
+                {(item.price * item.quantity).toFixed(0)} Br
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Notes */}
+        {order.notes && (
+          <div
+            className="flex gap-2 items-start rounded-xl px-3 py-2 mb-3 text-xs"
+            style={{ background: "#fffbeb", color: "#92400e" }}
+          >
+            <span className="font-semibold shrink-0">Note:</span>
+            <span>{order.notes}</span>
+          </div>
+        )}
+
+        {/* Actions */}
+        {nextStatus && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => onUpdate(order.id, nextStatus)}
+              className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all active:scale-[0.98]"
+              style={{
+                background: "linear-gradient(135deg, var(--brand) 0%, var(--brand-dark) 100%)",
+                boxShadow: "0 2px 8px rgba(201,147,90,0.3)"
+              }}
+            >
+              Mark as {STATUS_CONFIG[nextStatus].label}
+            </button>
+            {isPending && (
+              <button
+                onClick={() => onUpdate(order.id, "CANCELLED")}
+                className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
+                style={{ background: "#fee2e2", color: "#991b1b" }}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
