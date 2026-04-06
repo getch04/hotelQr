@@ -1,12 +1,13 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const { headers, ...rest } = options || {};
   const res = await fetch(`${API_URL}${path}`, {
+    ...rest,
     headers: {
       "Content-Type": "application/json",
-      ...options?.headers,
+      ...headers,
     },
-    ...options,
   });
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: res.statusText }));
