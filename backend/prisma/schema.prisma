@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Hotel {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  address   String?
+  phone     String?
+  logoUrl   String?
+  createdAt DateTime @default(now())
+
+  rooms          Room[]
+  menuCategories MenuCategory[]
+  staffUsers     StaffUser[]
+}
+
+model Room {
+  id      String @id @default(uuid())
+  number  String
+  floor   Int    @default(1)
+  hotelId String
+
+  hotel  Hotel   @relation(fields: [hotelId], references: [id])
+  orders Order[]
+
+  @@unique([hotelId, number])
+}
+
+model MenuCategory {
+  id      String @id @default(uuid())
+  name    String
+  nameAm  String?
+  sortOrder Int  @default(0)
+  hotelId String
+
+  hotel Hotel      @relation(fields: [hotelId], references: [id])
+  items MenuItem[]
+}
+
+model MenuItem {
+  id          String  @id @default(uuid())
+  name        String
+  nameAm      String?
+  description String?
+  descriptionAm String?
+  price       Float
+  imageUrl    String?
+  available   Boolean @default(true)
+  categoryId  String
+
+  category   MenuCategory @relation(fields: [categoryId], references: [id])
+  orderItems OrderItem[]
+}
+
+model Order {
+  id        String      @id @default(uuid())
+  roomId    String
+  status    OrderStatus @default(PENDING)
+  notes     String?
+  total     Float
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  room  Room        @relation(fields: [roomId], references: [id])
+  items OrderItem[]
+}
+
+enum OrderStatus {
+  PENDING
+  PREPARING
+  DELIVERED
+  CANCELLED
+}
+
+model OrderItem {
+  id       String @id @default(uuid())
+  orderId  String
+  menuItemId String
+  quantity Int
+  price    Float
+
+  order    Order    @relation(fields: [orderId], references: [id])
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id])
+}
+
+model StaffUser {
+  id       String @id @default(uuid())
+  username String @unique
+  password String
+  name     String
+  role     StaffRole @default(STAFF)
+  hotelId  String
+
+  hotel Hotel @relation(fields: [hotelId], references: [id])
+}
+
+enum StaffRole {
+  ADMIN
+  STAFF
+}

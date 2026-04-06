@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: hotel-qr-backend
+    runtime: node
+    region: ohio
+    rootDir: backend
+    buildCommand: npm run render:build
+    startCommand: node dist/main
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: PORT
+        value: 3001
+      - key: NODE_ENV
+        value: production
