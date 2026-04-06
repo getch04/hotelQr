@@ -10,10 +10,8 @@ import {
   XCircle,
   LogOut,
   RefreshCw,
-  Bell,
 } from "lucide-react";
 import { api, Order, OrderStatus } from "@/lib/api";
-import { getSocket } from "@/lib/socket";
 
 const STATUS_CONFIG: Record<
   OrderStatus,
@@ -62,35 +60,6 @@ export default function StaffDashboard() {
     fetchOrders();
   }, [fetchOrders]);
 
-  // Real-time updates via Socket.IO
-  useEffect(() => {
-    const socket = getSocket();
-
-    socket.on("order:new", (order: Order) => {
-      setOrders((prev) => [order, ...prev]);
-      toast("New order!", {
-        description: `Room ${order.room?.number} - ${order.items.length} items`,
-        icon: <Bell className="w-4 h-4" />,
-      });
-      // Play notification sound
-      try {
-        const audio = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1lZ2B2eH15d3R0c35+goF/f4CBg4SGiImKi4yNjo+Pj46NjIqIhoSBfnp2cm5qaGZkYmFhYWJjZGZpbG9yeHyAhImNkJOVl5iZmZiXlZKPi4eDfnl0b2pmY2BfXl5fYGJkZ2pucXV6f4OHi4+SlZibnJ2dnJuZl5SSj4uHg396dnFtaWZjYWBfX2BhY2VobG9zdnyAhIiMj5KVmJqbnJybmpiVkpCMiISAfXl1cW1qaGZkY2NjZGVnaWxvcnZ6foKGio2Rk5aYmpubnJuamJaUkY6Lh4SAe3d0cG1qaGZlZGRkZWdpbG9ydnp+goaJjZCTlpiampubnJuZl5WSkI2Kh4N/e3hzcG1raWdmZWVmZ2lrbm9zdnp+goaJjZCTlZeZmpubnJuZl5WSkI2Kh4N/e3hzcG1raWdmZWVmZ2lrbm9zdnp+goaJjZCTlZeZmpubnJuZl5WSkI2Kh4N/e3hzcG1raWdmZWVmZ2lrbm9zdnp+goaJjQ==");
-        audio.volume = 0.3;
-        audio.play().catch(() => {});
-      } catch {}
-    });
-
-    socket.on("order:updated", (updated: Order) => {
-      setOrders((prev) =>
-        prev.map((o) => (o.id === updated.id ? updated : o))
-      );
-    });
-
-    return () => {
-      socket.off("order:new");
-      socket.off("order:updated");
-    };
-  }, []);
 
   const handleStatusUpdate = async (orderId: string, status: OrderStatus) => {
     const token = localStorage.getItem("token");

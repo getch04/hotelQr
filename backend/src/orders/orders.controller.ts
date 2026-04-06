@@ -11,22 +11,16 @@ import {
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
-import { OrdersGateway } from '../gateway/orders.gateway';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { OrderStatus } from '@prisma/client';
 
 @Controller('orders')
 export class OrdersController {
-  constructor(
-    private ordersService: OrdersService,
-    private ordersGateway: OrdersGateway,
-  ) {}
+  constructor(private ordersService: OrdersService) {}
 
   @Post()
   async create(@Body() dto: CreateOrderDto) {
-    const order = await this.ordersService.create(dto);
-    this.ordersGateway.notifyNewOrder(order);
-    return order;
+    return this.ordersService.create(dto);
   }
 
   @Get('room/:roomId')
@@ -49,8 +43,6 @@ export class OrdersController {
     @Param('id') id: string,
     @Body() dto: UpdateOrderStatusDto,
   ) {
-    const order = await this.ordersService.updateStatus(id, dto.status);
-    this.ordersGateway.notifyOrderUpdate(order);
-    return order;
+    return this.ordersService.updateStatus(id, dto.status);
   }
 }
