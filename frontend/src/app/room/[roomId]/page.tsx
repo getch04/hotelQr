@@ -464,61 +464,88 @@ function MenuCard({
 }) {
   return (
     <div
-      className="rounded-2xl p-4 flex gap-4 items-start transition-all"
+      className="rounded-2xl overflow-hidden transition-all"
       style={{
         background: "var(--card)",
-        boxShadow: "var(--shadow-sm)",
-        borderLeft: inCart ? "3px solid var(--brand)" : "3px solid transparent",
+        boxShadow: inCart ? "0 0 0 2px var(--brand), var(--shadow-md)" : "var(--shadow-sm)",
       }}
     >
-      <div className="flex-1 min-w-0">
-        <h3 className="font-semibold text-sm leading-snug">{item.name}</h3>
-        {item.nameAm && (
-          <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>{item.nameAm}</p>
-        )}
-        {item.description && (
-          <p className="text-xs mt-1.5 leading-relaxed line-clamp-2" style={{ color: "var(--text-secondary)" }}>
-            {item.description}
-          </p>
-        )}
-        <p className="text-sm font-bold mt-2.5" style={{ color: "var(--brand)" }}>
-          {item.price.toFixed(0)} Br
-        </p>
-      </div>
-
-      <div className="shrink-0 mt-0.5">
-        {inCart ? (
-          <div
-            className="flex items-center gap-1 rounded-xl px-1"
-            style={{ background: "var(--brand-light)" }}
-          >
-            <button
-              onClick={() => onUpdate(-1)}
-              className="p-1.5 transition-opacity"
-              style={{ color: "var(--brand-dark)" }}
-            >
-              <Minus className="w-3.5 h-3.5" />
-            </button>
-            <span className="text-sm font-bold w-5 text-center" style={{ color: "var(--brand-dark)" }}>
-              {inCart.quantity}
-            </span>
-            <button
-              onClick={() => onUpdate(1)}
-              className="p-1.5 transition-opacity"
-              style={{ color: "var(--brand-dark)" }}
-            >
-              <Plus className="w-3.5 h-3.5" />
-            </button>
+      <div className="flex">
+        {/* Image */}
+        {item.imageUrl && (
+          <div className="relative w-28 shrink-0">
+            <img
+              src={item.imageUrl}
+              alt={item.name}
+              className="absolute inset-0 w-full h-full object-cover"
+              loading="lazy"
+            />
+            {inCart && (
+              <div className="absolute top-1.5 left-1.5 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+                   style={{ background: "var(--brand)" }}>
+                {inCart.quantity}
+              </div>
+            )}
           </div>
-        ) : (
-          <button
-            onClick={onAdd}
-            className="w-9 h-9 flex items-center justify-center rounded-xl transition-all active:scale-90"
-            style={{ background: "var(--brand-light)", color: "var(--brand-dark)" }}
-          >
-            <Plus className="w-4.5 h-4.5" strokeWidth={2.5} />
-          </button>
         )}
+
+        {/* Content */}
+        <div className="flex-1 min-w-0 p-3.5 flex flex-col justify-between">
+          <div>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <h3 className="font-semibold text-sm leading-snug">{item.name}</h3>
+                {item.nameAm && (
+                  <p className="text-[11px] mt-0.5" style={{ color: "var(--text-muted)" }}>{item.nameAm}</p>
+                )}
+              </div>
+            </div>
+            {item.description && (
+              <p className="text-xs mt-1.5 leading-relaxed line-clamp-2" style={{ color: "var(--text-secondary)" }}>
+                {item.description}
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between mt-2.5">
+            <p className="text-sm font-bold" style={{ color: "var(--brand)" }}>
+              {item.price.toFixed(0)} Br
+            </p>
+
+            {inCart ? (
+              <div
+                className="flex items-center gap-1 rounded-xl px-1"
+                style={{ background: "var(--brand-light)" }}
+              >
+                <button
+                  onClick={() => onUpdate(-1)}
+                  className="p-1.5 transition-opacity"
+                  style={{ color: "var(--brand-dark)" }}
+                >
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
+                <span className="text-sm font-bold w-5 text-center" style={{ color: "var(--brand-dark)" }}>
+                  {inCart.quantity}
+                </span>
+                <button
+                  onClick={() => onUpdate(1)}
+                  className="p-1.5 transition-opacity"
+                  style={{ color: "var(--brand-dark)" }}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={onAdd}
+                className="w-9 h-9 flex items-center justify-center rounded-xl transition-all active:scale-90"
+                style={{ background: "var(--brand-light)", color: "var(--brand-dark)" }}
+              >
+                <Plus className="w-4.5 h-4.5" strokeWidth={2.5} />
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
