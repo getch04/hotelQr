@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -40,24 +40,37 @@ export default function StaffDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState<OrderStatus | "ALL">("ALL");
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [user, setUser] = useState<{ name: string; hotel: { id: string; name: string } } | null>(null);
+  const tokenRef = useRef<string | null>(null);
+  const userRef = useRef<{ name: string; hotel: { id: string; name: string } } | null>(null);
 
-  const fetchOrders = useCallback(async () => {
-    const token = localStorage.getItem("token");
-    const userData = localStorage.getItem("user");
+  const fetchOrders = useCallback(async (isRefresh = false) => {
+    const token = tokenRef.current || localStorage.getItem("token");
+    const userData = userRef.current || (() => {
+      try { return JSON.parse(localStorage.getItem("user") || "null"); } catch { return null; }
+    })();
+
     if (!token || !userData) {
       router.push("/staff/login");
       return;
     }
-    const parsed = JSON.parse(userData);
-    setUser(parsed);
+
+    tokenRef.current = token;
+    userRef.current = userData;
+    setUser(userData);
+
+    if (isRefresh) setRefreshing(true);
+
     try {
-      const data = await api.getOrdersByHotel(parsed.hotel.id, token);
+      const data = await api.getOrdersByHotel(userData.hotel.id, token);
       setOrders(data);
+      if (isRefresh) toast.success(`${data.length} orders loaded`);
     } catch {
       toast.error("Failed to load orders");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [router]);
 
@@ -66,7 +79,7 @@ export default function StaffDashboard() {
   }, [fetchOrders]);
 
   const handleStatusUpdate = async (orderId: string, status: OrderStatus) => {
-    const token = localStorage.getItem("token");
+    const token = tokenRef.current;
     if (!token) return;
     try {
       const updated = await api.updateOrderStatus(orderId, status, token);
@@ -81,7 +94,6 @@ export default function StaffDashboard() {
   const pendingCount   = orders.filter((o) => o.status === "PENDING").length;
   const preparingCount = orders.filter((o) => o.status === "PREPARING").length;
 
-  /* ── Loading ─────────────────────────────────────────── */
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--surface)" }}>
@@ -95,8 +107,8 @@ export default function StaffDashboard() {
 
       {/* Header */}
       <header
-        className="sticky top-0 z-30"
-        style={{ background: "var(--card)", borderBottom: "1px solid var(--border)" }}
+        className="sticky top-0 z-30 backdrop-blur-xl"
+        style={{ background: "rgba(255,255,255,0.85)", borderBottom: "1px solid var(--border)" }}
       >
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
           <div>
@@ -107,12 +119,16 @@ export default function StaffDashboard() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={fetchOrders}
-              className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors"
+              onClick={() => fetchOrders(true)}
+              disabled={refreshing}
+              className="w-9 h-9 flex items-center justify-center rounded-xl transition-all active:scale-95 disabled:opacity-50"
               style={{ background: "var(--surface-warm)" }}
-              title="Refresh"
+              title="Refresh orders"
             >
-              <RefreshCw className="w-4 h-4" style={{ color: "var(--text-secondary)" }} />
+              <RefreshCw
+                className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`}
+                style={{ color: "var(--text-secondary)" }}
+              />
             </button>
             <button
               onClick={() => {
@@ -120,7 +136,7 @@ export default function StaffDashboard() {
                 localStorage.removeItem("user");
                 router.push("/staff/login");
               }}
-              className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors"
+              className="w-9 h-9 flex items-center justify-center rounded-xl transition-all active:scale-95"
               style={{ background: "var(--surface-warm)" }}
               title="Logout"
             >
@@ -183,12 +199,7 @@ export default function StaffDashboard() {
                   />
                 )}
                 {s === "ALL" ? "All" : STATUS_CONFIG[s].label}
-                <span
-                  className="ml-0.5 text-[10px]"
-                  style={{ opacity: 0.7 }}
-                >
-                  {count}
-                </span>
+                <span className="ml-0.5 text-[10px]" style={{ opacity: 0.7 }}>{count}</span>
               </button>
             );
           })}
@@ -211,11 +222,7 @@ export default function StaffDashboard() {
         ) : (
           <div className="space-y-3">
             {filteredOrders.map((order) => (
-              <OrderCard
-                key={order.id}
-                order={order}
-                onUpdate={handleStatusUpdate}
-              />
+              <OrderCard key={order.id} order={order} onUpdate={handleStatusUpdate} />
             ))}
           </div>
         )}
@@ -228,12 +235,8 @@ export default function StaffDashboard() {
 function StatCard({
   icon, count, label, iconBg, iconColor, countColor
 }: {
-  icon: React.ReactNode;
-  count: number;
-  label: string;
-  iconBg: string;
-  iconColor: string;
-  countColor: string;
+  icon: React.ReactNode; count: number; label: string;
+  iconBg: string; iconColor: string; countColor: string;
 }) {
   return (
     <div
@@ -241,9 +244,7 @@ function StatCard({
       style={{ background: "var(--card)", boxShadow: "var(--shadow-sm)", border: "1px solid var(--border)" }}
     >
       <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-           style={{ background: iconBg, color: iconColor }}>
-        {icon}
-      </div>
+           style={{ background: iconBg, color: iconColor }}>{icon}</div>
       <div>
         <p className="text-2xl font-bold leading-none" style={{ color: countColor }}>{count}</p>
         <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>{label}</p>
@@ -253,13 +254,7 @@ function StatCard({
 }
 
 /* ── Order Card ───────────────────────────────────────────── */
-function OrderCard({
-  order,
-  onUpdate,
-}: {
-  order: Order;
-  onUpdate: (id: string, status: OrderStatus) => void;
-}) {
+function OrderCard({ order, onUpdate }: { order: Order; onUpdate: (id: string, status: OrderStatus) => void }) {
   const config     = STATUS_CONFIG[order.status];
   const StatusIcon = config.icon;
   const nextStatus = NEXT_STATUS[order.status];
@@ -271,11 +266,10 @@ function OrderCard({
       style={{
         background: "var(--card)",
         boxShadow: isPending ? "0 0 0 2px #fbbf24, var(--shadow-sm)" : "var(--shadow-sm)",
-        border: `1px solid var(--border)`
+        border: "1px solid var(--border)"
       }}
     >
       <div className="p-4">
-        {/* Top row */}
         <div className="flex items-start justify-between mb-3">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -297,11 +291,7 @@ function OrderCard({
           </span>
         </div>
 
-        {/* Items */}
-        <div
-          className="rounded-xl p-3 mb-3 space-y-1.5"
-          style={{ background: "var(--surface-warm)" }}
-        >
+        <div className="rounded-xl p-3 mb-3 space-y-1.5" style={{ background: "var(--surface-warm)" }}>
           {order.items.map((item) => (
             <div key={item.id} className="flex justify-between text-sm">
               <span>
@@ -315,18 +305,14 @@ function OrderCard({
           ))}
         </div>
 
-        {/* Notes */}
         {order.notes && (
-          <div
-            className="flex gap-2 items-start rounded-xl px-3 py-2 mb-3 text-xs"
-            style={{ background: "#fffbeb", color: "#92400e" }}
-          >
+          <div className="flex gap-2 items-start rounded-xl px-3 py-2 mb-3 text-xs"
+               style={{ background: "#fffbeb", color: "#92400e" }}>
             <span className="font-semibold shrink-0">Note:</span>
             <span>{order.notes}</span>
           </div>
         )}
 
-        {/* Actions */}
         {nextStatus && (
           <div className="flex gap-2">
             <button
