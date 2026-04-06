@@ -4,11 +4,16 @@ const path = require('path');
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
-const rooms = [
-  { id: 'room-101-0000-0000-0000-000000000000', number: '101' },
-  { id: 'room-102-0000-0000-0000-000000000000', number: '102' },
-  { id: 'room-103-0000-0000-0000-000000000000', number: '103' },
-];
+function deterministicRoomId(roomNumber) {
+  const hex = roomNumber.toString(16).padStart(12, '0');
+  return `00000000-0000-4000-8000-${hex.slice(-12)}`;
+}
+
+const roomNumbers = [101, 102, 103, 201, 202, 203, 301, 302];
+const rooms = roomNumbers.map((n) => ({
+  id: deterministicRoomId(n),
+  number: String(n),
+}));
 
 async function generate() {
   const outDir = path.join(__dirname, 'qr-codes');

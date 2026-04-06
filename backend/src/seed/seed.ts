@@ -3,6 +3,12 @@ import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
+/** Valid v4-shaped UUID derived from room number so IDs stay stable across re-seeds and pass @IsUUID(). */
+function deterministicRoomId(roomNumber: number): string {
+  const hex = roomNumber.toString(16).padStart(12, '0');
+  return `00000000-0000-4000-8000-${hex.slice(-12)}`;
+}
+
 async function main() {
   // Clean existing data
   await prisma.orderItem.deleteMany();
@@ -29,7 +35,7 @@ async function main() {
     roomNumbers.map((num) =>
       prisma.room.create({
         data: {
-          id: `room-${num}-0000-0000-0000-000000000000`,
+          id: deterministicRoomId(num),
           number: String(num),
           floor: Math.floor(num / 100),
           hotelId: hotel.id,

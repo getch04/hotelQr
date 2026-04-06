@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Utensils, ShieldCheck, QrCode } from "lucide-react";
 
-const SAMPLE_ROOM_ID = "room-101-0000-0000-0000-000000000000";
+// Must match backend seed: deterministicRoomId(101)
+const SAMPLE_ROOM_ID = "00000000-0000-4000-8000-000000000065";
 
 export default function Home() {
   return (
