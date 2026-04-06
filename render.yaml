@@ -3,6 +3,7 @@ services:
     name: hotel-qr-backend
     runtime: node
     region: ohio
+    plan: free
     rootDir: backend
     buildCommand: npm run render:build
     startCommand: node dist/main
@@ -10,8 +11,6 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: JWT_SECRET
-        sync: false
-      - key: PORT
-        value: 3001
+        value: hotel-qr-production-secret-2026
       - key: NODE_ENV
         value: production
